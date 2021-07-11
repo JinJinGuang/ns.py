@@ -20,54 +20,314 @@ $ pip install ns.py
 
 That's it! You can now try to run some examples in the `examples/` directory. More examples will be added as existing components are refined and new components are introduced.
 
+## Computer Networking
+
+### Delay
+
+See [delay](https://zh.wikipedia.org/wiki/%E6%97%B6%E5%BB%B6).
+
+<img src="img/1625987838790.png" alt="1625987838790" style="zoom:50%;" />
+
+- [Processing delay](https://en.wikipedia.org/wiki/Processing_delay) – time it takes a router to process the packet header
+- [Queuing delay](https://en.wikipedia.org/wiki/Queuing_delay) – time the packet spends in routing queues
+- [Transmission delay](https://en.wikipedia.org/wiki/Transmission_delay) – time it takes to push the packet's bits onto the link
+- [Propagation delay](https://en.wikipedia.org/wiki/Propagation_delay) – time for a signal to propagate through the media
+
 ## Current Network Components
 
 The network components that have already been implemented include:
 
+### Packet (Customer or Job)
+
 * `Packet`: a simple representation of a network packet, carrying its creation time, size, packet id, flow id, source and destination.
 
+  ```python
+  class Packet:
+      """
+      Packets in ns.py are generally created by packet generators, and will run through a queue at an output port.
+      Parameters
+      ----------
+      time: float (creation time)
+          the time when the packet is generated.
+      size: float
+          the size of the packet in bytes, which (in bytes) field is used to determine its transmission time.
+      packet_id: int
+          an identifier for the packet
+      src, dst: int
+          identifiers for the source and destination
+      flow_id: int or str
+          an integer or string that can be used to identify a flow (customer type?)
+      """
+      def __init__(self,
+                   time,
+                   size,
+                   packet_id,
+                   src="source",
+                   dst="destination",
+                   flow_id=0):
+  ```
+
+### Packet Generator (Source)
+
 * `DistPacketGenerator`: generates packets according to provided distributions of inter-arrival times and packet sizes.
+
+  ```python
+  class DistPacketGenerator:
+      """ 
+      Generates packets with a given inter-arrival time distribution.
+      Parameters
+      ----------
+      env: simpy.Environment
+          The simulation environment.
+      element_id: str
+          the ID of this element (generator).
+      arrival_dist: function
+          A no-parameter function that returns the successive inter-arrival times of
+          the packets.
+      size_dist: function
+          A no-parameter function that returns the successive sizes of the packets.
+      initial_delay: number
+          Starts generation after an initial delay. Defaults to 0.
+      finish: number
+          Stops generation at the finish time. Defaults to infinite.
+      rec_flow: bool
+          Are we recording the statistics of packets generated? (size and creation time)
+      """
+      def __init__(self,
+                   env,
+                   element_id,
+                   arrival_dist,
+                   size_dist,
+                   initial_delay=0,
+                   finish=float("inf"),
+                   flow_id=0,
+                   rec_flow=False,
+                   debug=False):
+  ```
 
 * `TracePacketGenerator`: generates packets according to a trace file, with each row in the trace file representing a packet.
 
 * `TCPPacketGenerator`: generates packets using TCP as the transport protocol.
 
+### Sink (Destination)
+
 * `PacketSink`: receives packets and records delay statistics.
+
+  ```python
+  class PacketSink:
+      """ 
+  	A PacketSink is designed to record both arrival times and waiting times from the incoming packets.
+      Parameters
+      ----------
+      env: simpy.Environment
+          the simulation environment
+      rec_arrivals: bool
+          if True, arrivals will be recorded
+      absolute_arrivals: bool
+          if True absolute arrival times will be recorded, otherwise the time between
+          consecutive arrivals (inter-arrival time) is recorded.
+      rec_waits: bool
+          if True, the waiting times experienced by the packets are recorded
+      rec_flow_ids: bool
+          if True, the flow IDs that the packets are used as the index for recording;
+          otherwise, the 'src' field in the packets are used
+      debug: bool
+          If True, prints more verbose debug information.
+      """
+      def __init__(self,
+                   env,
+                   rec_arrivals: bool = True,
+                   absolute_arrivals: bool = True,
+                   rec_waits: bool = True,
+                   rec_flow_ids: bool = True,
+                   debug: bool = False):
+  ```
 
 * `TCPSink`: receives packets, records delay statistics, and produces acknowledgements back to a TCP sender.
 
+### Port
+
 * `Port`: an output port on a switch with a given rate and buffer size (in either bytes or the number of packets), using the simple tail-drop mechanism to drop packets.
+
+  ```python
+  class Port:
+      """ 
+      Model an output port on a switch with a given rate and buffer size (in either bytes or the number of packets), using the simple tail-drop mechanism to drop packets.
+      Parameters
+      ----------
+      env: simpy.Environment
+          the simulation environment
+      rate: float 
+          the bit rate of the port (bps, bit/s)
+      element_id: int
+          the element id of this port
+      qlimit: integer (or None)
+          a queue limit in bytes or packets (including the packet in service), beyond
+          which all packets will be dropped. Default is the infinie queue limit.
+      limit_bytes: bool
+          if True, the queue limit will be based on bytes; if False, the queue limit
+          will be based on packets.
+      zero_downstream_buffer: bool (???)
+          if True, assume that the downstream element does not have any buffers,
+          and backpressure is in effect so that all waiting packets queue up in this
+          element's buffer.
+      debug: bool
+          If True, prints more verbose debug information.
+      """
+      def __init__(self,
+                   env,
+                   rate: float,
+                   element_id: int = None,
+                   qlimit: int = None,
+                   limit_bytes: bool = False,
+                   zero_downstream_buffer: bool = False,
+                   debug: bool = False):
+  ```
 
 * `REDPort`: an output port on a switch with a given rate and buffer size (in either bytes or the number of packets), using the Early Random Detection (RED) mechanism to drop packets.
 
+### Wire
+
 * `Wire`: a network wire (cable) with its propagation delay following a given distribution. There is no need to model the bandwidth of the wire, as that can be modeled by its upstream `Port` or scheduling server.
 
-* `Splitter`: a splitter that simply sends the original packet out of port 1 and sends a copy of the packet out of port 2.
+  ```python
+  class Wire:
+      """ 
+      Implements a network wire (cable) that introduces a propagation delay.
+      Set the "out" member variable to the entity to receive the packet.
+      Parameters
+      ----------
+      env: simpy.Environment
+          the simulation environment
+      delay: float
+          a no-parameter function that returns the successive propagation
+          delays on this wire
+      """
+      def __init__(self, env, delay_dist, wire_id=0, debug=False):
+  ```
 
+### Splitter
+
+* `Splitter`: a splitter that simply sends the original packet out of port 1 and sends a copy of the packet out of port 2.
 * `NWaySplitter`: an n-way splitter that sends copies of the packet to *n* downstream elements.
 
+### Communication Network Component
+
 * `TrTCM`: a two rate three color marker that marks packets as green, yellow, or red (refer to RFC 2698 for more details).
-
 * `RandomDemux`: a demultiplexing element that chooses the output port at random.
-
 * `FlowDemux`: a demultiplexing element that splits packet streams by flow ID.
-
 * `FIBDemux`: a demultiplexing element that uses a Flow Information Base (FIB) to make packet forwarding decisions based on flow IDs.
-
 * `TokenBucketShaper`: a token bucket shaper.
-
 * `TwoRateTokenBucketShaper`: a two-rate three-color token bucket shaper with both committed and peak rates/burst sizes.
 
+### Server
+
 * `SPServer`: a Static Priority (SP) scheduler.
+  ![img](https://pic3.zhimg.com/80/v2-cc1707b42ddc9c8bd716f173850bb292_1440w.jpg)
+
+  ```python
+  class SPServer:
+      """
+      Parameters
+      ----------
+      env: simpy.Environment
+          The simulation environment.
+      rate: float
+          The bit rate of the port.
+      priorities: list or dict
+          This can be either a list or a dictionary. If it is a list, it uses the flow_id as its index to look for the flow's corresponding priority. If it is a dictionary, it contains (flow_id -> priority) pairs for each possible flow_id.
+      zero_buffer: bool
+          Does this server have a zero-length buffer? This is useful when multiple
+          basic elements need to be put together to construct a more complex element
+          with a unified buffer.
+      zero_downstream_buffer: bool
+          Does this server's downstream element has a zero-length buffer? If so, packets
+          may queue up in this element's own buffer rather than be forwarded to the
+          next-hop element.
+      debug: bool
+          If True, prints more verbose debug information.
+      """
+      def __init__(self,
+                   env,
+                   rate,
+                   priorities,
+                   zero_buffer=False,
+                   zero_downstream_buffer=False,
+                   debug=False) -> None:
+  ```
 
 * `WFQServer`: a Weighted Fair Queueing (WFQ) scheduler.
+  ![img](https://pic1.zhimg.com/80/v2-6f48339ec6dd887d776bbb7729e9bf94_1440w.jpg)(Idealized model)
+
+  ```python
+  class WFQServer:
+      """
+      Parameters
+      ----------
+      env: simpy.Environment
+          The simulation environment.
+      rate: float
+          The bit rate of the port.
+      weights: list or dict
+          This can be either a list or a dictionary. If it is a list, it uses the flow_id as its index to look for the flow's corresponding weight. If it is a dictionary, it contains (flow_id -> weight) pairs for each possible flow_id.
+      zero_buffer: bool
+          Does this server have a zero-length buffer? This is useful when multiple
+          basic elements need to be put together to construct a more complex element
+          with a unified buffer.
+      zero_downstream_buffer: bool
+          Does this server's downstream element has a zero-length buffer? If so, packets
+          may queue up in this element's own buffer rather than be forwarded to the
+          next-hop element.
+      debug: bool
+          If True, prints more verbose debug information.
+      """
+      def __init__(self,
+                   env,
+                   rate,
+                   weights,
+                   zero_buffer=False,
+                   zero_downstream_buffer=False,
+                   debug=False) -> None:
+  ```
 
 * `DRRServer`: a Deficit Round Robin (DRR) scheduler.
+  ![preview](https://pic1.zhimg.com/v2-7bc3b14dba6c55f2e4ba5ed274524688_r.jpg)
+
+  ```python
+  class DRRServer:
+      """
+      Parameters
+      ----------
+      env: simpy.Environment
+          The simulation environment.
+      rate: float
+          The bit rate of the port.
+      weights: list or dict
+          This can be either a list or a dictionary. If it is a list, it uses the flow_id as its index to look for the flow's corresponding weight. If it is a dictionary, it contains (flow_id -> weight) pairs for each possible flow_id.
+      zero_buffer: bool
+          Does this server have a zero-length buffer? This is useful when multiple basic elements need to be put together to construct a more complex element with a unified buffer.
+      zero_downstream_buffer: bool
+          Does this server's downstream element have a zero-length buffer? If so, packets may queue up in this element's own buffer rather than be forwarded to the next-hop element.
+      debug: bool
+          If True, prints more verbose debug information.
+      """
+      MIN_QUANTUM = 1500
+  
+      def __init__(self,
+                   env,
+                   rate,
+                   weights: list,
+                   zero_buffer=False,
+                   zero_downstream_buffer=False,
+                   debug=False,
+                   out_queue_id=None) -> None:
+  ```
 
 * `VirtualClockServer`: a Virtual Clock scheduler.
 
-* `PortMonitor`: records the number of packets in a `Port`. The monitoring interval follows a given distribution.
+### Monitor
 
+* `PortMonitor`: records the number of packets in a `Port`. The monitoring interval follows a given distribution.
 * `ServerMonitor`: records performance statistics in a scheduling server, such as `WFQServer`, `VirtualClockServer`, `SPServer`, or `DRRServer`.
 
 ## Current utilities
