@@ -176,14 +176,19 @@ class SPServer:
         if self.total_packets() == 0: # if idle？??
             self.packets_available.put(True)
 
+<<<<<<< HEAD
         prio = self.prio[packet.flow_id] # the priority of the flow
         print(self.prio_queue_count)
         print(prio)
         self.prio_queue_count[prio] += 1 # There may be a bug for the LIST version for priority. 
+=======
+        prio = self.prio[packet.flow_id]
+        self.prio_queue_count[prio] += 1
+>>>>>>> 409d85c74ba0fe72cfddc6112265fd4ff0b85bbf
 
         if self.debug:
             print(
-                f"Time {self.env.now}, flow_id {packet.flow_id}, packet_id {packet.packet_id}"
+                f"At time {self.env.now}: received packet {packet.packet_id} from flow {packet.flow_id}"
             )
 
         if not prio in self.stores:
