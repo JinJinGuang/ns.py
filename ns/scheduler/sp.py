@@ -176,15 +176,8 @@ class SPServer:
         if self.total_packets() == 0: # if idle？??
             self.packets_available.put(True)
 
-<<<<<<< HEAD
-        prio = self.prio[packet.flow_id] # the priority of the flow
-        print(self.prio_queue_count)
-        print(prio)
-        self.prio_queue_count[prio] += 1 # There may be a bug for the LIST version for priority. 
-=======
         prio = self.prio[packet.flow_id]
         self.prio_queue_count[prio] += 1
->>>>>>> 409d85c74ba0fe72cfddc6112265fd4ff0b85bbf
 
         if self.debug:
             print(
@@ -205,40 +198,3 @@ class SPServer:
             self.downstream_stores[prio].put(packet)
 
         return self.stores[prio].put(packet)
-
-
-
-if __name__ == '__main__':
-    from ns.packet.dist_generator import DistPacketGenerator
-    from ns.packet.sink import PacketSink
-    import numpy as np
-    np.random.seed(42)
-
-    def arrival_1():
-        """ Packets arrive with a constant interval of 1.5 seconds. """
-        return 1.5
-
-
-    def arrival_2():
-        """ Packets arrive with a constant interval of 2.0 seconds. """
-        return 2.0
-
-    def packet_size():
-        return int(np.random.exponential(100))
-
-    DEBUG = True
-
-    env = simpy.Environment()
-    # sp = SPServer(env, 100, [1,100], debug=DEBUG)
-    # sp = SPServer(env, 100, {0:10, 1:1}, debug=DEBUG)
-    sp = SPServer(env, 100, {0:1, 1:10}, debug=DEBUG)
-    ps = PacketSink(env, rec_flow_ids=False, debug=DEBUG)
-
-    pg1 = DistPacketGenerator(env, "flow_1", arrival_1, packet_size, flow_id=0)
-    pg2 = DistPacketGenerator(env, "flow_2", arrival_2, packet_size, flow_id=1)
-
-    pg1.out = sp
-    pg2.out = sp
-    sp.out = ps
-
-    env.run(until=20)
