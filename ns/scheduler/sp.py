@@ -176,13 +176,11 @@ class SPServer:
             self.packets_available.put(True)
 
         prio = self.prio[packet.flow_id]
-        print(self.prio_queue_count)
-        print(prio)
         self.prio_queue_count[prio] += 1
 
         if self.debug:
             print(
-                f"Time {self.env.now}, flow_id {packet.flow_id}, packet_id {packet.packet_id}"
+                f"At time {self.env.now}: received packet {packet.packet_id} from flow {packet.flow_id}"
             )
 
         if not prio in self.stores:

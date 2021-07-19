@@ -44,12 +44,10 @@ class DRRServer:
                  weights: list,
                  zero_buffer=False,
                  zero_downstream_buffer=False,
-                 debug=False,
-                 out_queue_id=None) -> None:
+                 debug=False) -> None:
         self.env = env
         self.rate = rate
         self.weights = weights
-        self.out_queue_id = out_queue_id
 
         if isinstance(weights, list):
             self.deficit = [0.0 for __ in range(len(weights))]
@@ -106,10 +104,10 @@ class DRRServer:
                 f"Sent out packet {packet.packet_id} from flow {packet.flow_id}"
             )
 
-        self.deficit[packet.flow_id] -= packet.size
-
         if self.debug:
-            print(f"Deficit reduced to {self.deficit[packet.flow_id]}")
+            print(
+                f"Deficit reduced to {self.deficit[packet.flow_id]} for flow {packet.flow_id}"
+            )
 
         self.flow_queue_count[packet.flow_id] -= 1
 
@@ -199,18 +197,15 @@ class DRRServer:
                                                    self.rate)
 
                             if self.zero_downstream_buffer:
-                                if self.out_queue_id:
-                                    packet.flow_id = self.out_queue_id
                                 self.out.put(
                                     packet,
                                     upstream_update=self.update,
                                     upstream_store=self.stores[flow_id])
                             else:
-                                if self.out_queue_id:
-                                    packet.flow_id = self.out_queue_id
                                 self.update(packet)
                                 self.out.put(packet)
 
+                            self.deficit[packet.flow_id] -= packet.size
                             self.current_packet = None
                         else:
                             assert not flow_id in self.head_of_line

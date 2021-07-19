@@ -1,6 +1,6 @@
 """
-This example shows how to construct a two-level topology consisting of Deficit Round
-Robin (DRR) servers. It also shows how to use strings for flow IDs and to use dictionaries
+This example shows how to construct a two-level topology consisting of Static Priority
+(SP) servers. It also shows how to use strings for flow IDs and to use dictionaries
 to provide per-flow weights to DRR servers, so that group IDs and per-group flow IDs can
 be easily used to construct globally unique flow IDs.
 """
@@ -9,7 +9,7 @@ import simpy
 from ns.packet.dist_generator import DistPacketGenerator
 from ns.packet.sink import PacketSink
 from ns.port.port import Port
-from ns.scheduler.drr import DRRServer
+from ns.scheduler.sp import SPServer
 
 
 def packet_arrival():
@@ -33,23 +33,25 @@ drr_server_per_group = {}
 
 for grp_id in range(total_groups):
     for flow_id in range(total_flows_per_group):
-        group_weights[f'grp_{grp_id}_flow_{flow_id}'] = 1
+        group_weights[f'grp_{grp_id}_flow_{flow_id}'] = (grp_id +
+                                                         1) * 3 + flow_id * 2
 
 ps = PacketSink(env)
-drr_server = DRRServer(env,
-                       service_rate_L1,
-                       group_weights,
-                       zero_buffer=True,
-                       debug=False)
+drr_server = SPServer(env,
+                      service_rate_L1,
+                      group_weights,
+                      zero_buffer=True,
+                      debug=False)
 drr_server.out = ps
 
 # Setting up the DRR server for each group
 for grp_id in range(total_groups):
     flow_weights = {}
     for flow_id in range(total_flows_per_group):
-        flow_weights[f'grp_{grp_id}_flow_{flow_id}'] = 1
+        flow_weights[f'grp_{grp_id}_flow_{flow_id}'] = (grp_id +
+                                                        1) * 3 + flow_id * 2
 
-    drr_server_per_group[f'grp_{grp_id}'] = DRRServer(
+    drr_server_per_group[f'grp_{grp_id}'] = SPServer(
         env,
         service_rate_L2,
         flow_weights,
