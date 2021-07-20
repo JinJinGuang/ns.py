@@ -53,7 +53,7 @@ class DRRServer:
             self.deficit = [0.0 for __ in range(len(weights))]
             self.flow_queue_count = [0 for __ in range(len(weights))]
             self.quantum = [
-                self.MIN_QUANTUM * x / min(weights) for x in weights
+                self.MIN_QUANTUM * x / min(weights) for x in weights # 依据 weight 分配 quantum, 最小 quantum 为 MIN_QUANTUM
             ]
         elif isinstance(weights, dict):
             self.deficit = {key: 0.0 for (key, __) in weights.items()}
@@ -65,7 +65,7 @@ class DRRServer:
         else:
             raise ValueError('Weights must be either a list or a dictionary.')
 
-        self.head_of_line = {}
+        self.head_of_line = {} # 猜测是放那些不够 quantum 的 packet
         self.active_set = set()
 
         # One FIFO queue for each flow_id
@@ -170,7 +170,7 @@ class DRRServer:
 
                 for flow_id, count in flow_queue_counts:
                     if count > 0:
-                        self.deficit[flow_id] += self.quantum[flow_id]
+                        self.deficit[flow_id] += self.quantum[flow_id] # 分配新一轮 quantum
                         if self.debug:
                             print(
                                 f"Flow queue length: {self.flow_queue_count}, ",
@@ -178,20 +178,20 @@ class DRRServer:
 
                     while self.deficit[flow_id] > 0 and self.flow_queue_count[
                             flow_id] > 0:
-                        if flow_id in self.head_of_line:
+                        if flow_id in self.head_of_line: # 先处理上一轮剩下的
                             packet = self.head_of_line[flow_id]
                             del self.head_of_line[flow_id]
-                        else:
+                        else: # 为什么上一轮没剩下呢？空了？
                             if self.zero_downstream_buffer:
                                 ds_store = self.downstream_stores[flow_id]
                                 packet = yield ds_store.get()
-                            else:
+                            else: # 一定至少发送一个包
                                 store = self.stores[flow_id]
                                 packet = yield store.get()
 
                         assert flow_id == packet.flow_id
 
-                        if packet.size <= self.deficit[flow_id]:
+                        if packet.size <= self.deficit[flow_id]: # 有余量情况
                             self.current_packet = packet
                             yield self.env.timeout(packet.size * 8.0 /
                                                    self.rate)
