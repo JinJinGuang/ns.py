@@ -40,25 +40,33 @@ Need to see the code again, after seeing the paper.
 
 ## 3. Deficit Round Robin (RBB)
 
-
+### A. Algorithm
 
 #### Scheduling Loop
 
-```c++
+```python
 while true do
     for i in 1..N do
         if not queue[i].empty() then
             DC[i]:= DC[i] + Q[i]
             while( not queue[i].empty() and DC[i] ≥ queue[i].head().size() ) do
                 DC[i] := DC[i] − queue[i].head().size()
-                send( queue[i].head() )
+                SEND( queue[i].head() )
                 queue[i].dequeue()
-            end while 不超过放头部
-            if queue[i].empty() then 没有这个
-                DC[i] := 0
-            end if
+            end while 
         end if
     end for
 end while
 ```
 
+**Q**: What is the meaning of `head_of_line` in the code?
+
+**A**: See the paper first, then ask if necessary.
+
+### B. Procedure
+
+Different Realization:
+
+![preview](https://pic1.zhimg.com/v2-7bc3b14dba6c55f2e4ba5ed274524688_r.jpg)
+
+## 4. HQoS

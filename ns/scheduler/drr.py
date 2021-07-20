@@ -170,7 +170,7 @@ class DRRServer:
 
                 for flow_id, count in flow_queue_counts:
                     if count > 0:
-                        self.deficit[flow_id] += self.quantum[flow_id] # 分配新一轮 quantum
+                        self.deficit[flow_id] += self.quantum[flow_id] # Allocate the quantum in the new round robin
                         if self.debug:
                             print(
                                 f"Flow queue length: {self.flow_queue_count}, ",
@@ -178,20 +178,21 @@ class DRRServer:
 
                     while self.deficit[flow_id] > 0 and self.flow_queue_count[
                             flow_id] > 0:
+                        # Select the packet
                         if flow_id in self.head_of_line: # 先处理上一轮剩下的
                             packet = self.head_of_line[flow_id]
                             del self.head_of_line[flow_id]
-                        else: # 为什么上一轮没剩下呢？空了？
+                        else: 
                             if self.zero_downstream_buffer:
                                 ds_store = self.downstream_stores[flow_id]
                                 packet = yield ds_store.get()
-                            else: # 一定至少发送一个包
+                            else:
                                 store = self.stores[flow_id]
                                 packet = yield store.get()
 
                         assert flow_id == packet.flow_id
 
-                        if packet.size <= self.deficit[flow_id]: # 有余量情况
+                        if packet.size <= self.deficit[flow_id]: # 余量够用情况：发送
                             self.current_packet = packet
                             yield self.env.timeout(packet.size * 8.0 /
                                                    self.rate)
@@ -207,7 +208,7 @@ class DRRServer:
 
                             self.deficit[packet.flow_id] -= packet.size
                             self.current_packet = None
-                        else:
+                        else: # 余量不够用情况：放到 head_of_line，处理下一种类型
                             assert not flow_id in self.head_of_line
                             self.head_of_line[flow_id] = packet
                             break
